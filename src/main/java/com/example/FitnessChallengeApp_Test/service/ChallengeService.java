@@ -1,131 +1,117 @@
 package com.example.FitnessChallengeApp_Test.service;
 
 import com.example.FitnessChallengeApp_Test.model.Challenge;
+import com.example.FitnessChallengeApp_Test.repository.ChallengeRepository;
+import lombok.Getter;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Service managing business operations and in-memory persistence for FitSquad Challenges.
+ * Service managing business operations and Spring Data JPA persistence for FitSquad Challenges.
+ * Delegates all CRUD, Derived Query, JPQL @Query, Pagination, and Sorting operations
+ * to ChallengeRepository.
  */
 @Service
+@Getter
 public class ChallengeService {
 
-    private final List<Challenge> challenges = new CopyOnWriteArrayList<>();
-    private final AtomicLong idGenerator = new AtomicLong(6);
+    private final ChallengeRepository challengeRepository;
 
-    public ChallengeService() {
-        // Pre-seed with the initial starter challenges
-        challenges.add(new Challenge(
-                1L,
-                "30-Day Core Crusher",
-                "Strength & Core",
-                "Sculpt and fortify core stability with progressively escalating daily plank variations, hollow holds, and dynamic abdominal circuits.",
-                "15 mins daily plank & core circuit",
-                30,
-                450,
-                "Intermediate",
-                "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?auto=format&fit=crop&w=800&q=80",
-                true
-        ));
-
-        challenges.add(new Challenge(
-                2L,
-                "HIIT Inferno Blast",
-                "Cardio & HIIT",
-                "Torch calories, build cardiovascular endurance, and spike metabolic rate with high-intensity Tabata and explosive plyometric intervals.",
-                "25 mins explosive interval training",
-                21,
-                500,
-                "Advanced",
-                "https://images.unsplash.com/photo-1601422407692-ec4eeec1d9b3?auto=format&fit=crop&w=800&q=80",
-                true
-        ));
-
-        challenges.add(new Challenge(
-                3L,
-                "Iron Titan Powerlifting",
-                "Hypertrophy & Power",
-                "Focus on fundamental compound movements—barbell squat, bench press, deadlift, and overhead press—to construct raw functional power.",
-                "4 heavy compound lifting sessions/wk",
-                45,
-                750,
-                "Advanced",
-                "https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80",
-                true
-        ));
-
-        challenges.add(new Challenge(
-                4L,
-                "Zen Flow Mobility & Yoga",
-                "Flexibility & Recovery",
-                "Decompress tight joints, increase deep hip and spine mobility, and master breathwork through restorative vinyasa recovery sessions.",
-                "20 mins mindful stretching & flow",
-                14,
-                250,
-                "Beginner",
-                "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&w=800&q=80",
-                false
-        ));
-
-        challenges.add(new Challenge(
-                5L,
-                "Sunrise 5K Sprint Series",
-                "Cardio Endurance",
-                "Build weekly running volume through structured pace drills, tempo intervals, and weekend outdoor endurance runs.",
-                "Accumulate 25 km running per week",
-                28,
-                400,
-                "Intermediate",
-                "https://images.unsplash.com/photo-1486218119243-13883505764c?auto=format&fit=crop&w=800&q=80",
-                true
-        ));
-
-        challenges.add(new Challenge(
-                6L,
-                "Hydration & 10K Habit Builder",
-                "Habit & Wellness",
-                "Dial in foundational wellness habits by consistently hitting 10,000 steps every day alongside optimal hydration discipline.",
-                "10,000 steps + 3L water daily",
-                30,
-                300,
-                "Beginner",
-                "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&w=800&q=80",
-                false
-        ));
+    public ChallengeService(ChallengeRepository challengeRepository) {
+        this.challengeRepository = challengeRepository;
     }
 
+    // =========================================================================
+    // Standard CRUD Operations (Inherited from JpaRepository)
+    // =========================================================================
+
     public List<Challenge> getAllChallenges() {
-        return new ArrayList<>(challenges);
+        return challengeRepository.findAll();
     }
 
     public Challenge getChallengeById(Long id) {
         if (id == null) {
             return null;
         }
-        return challenges.stream()
-                .filter(c -> id.equals(c.getId()))
-                .findFirst()
-                .orElse(null);
+        return challengeRepository.findById(id).orElse(null);
     }
 
     public Challenge addChallenge(Challenge challenge) {
-        if (challenge.getId() == null) {
-            challenge.setId(idGenerator.incrementAndGet());
-        }
         if (challenge.getCreatedAt() == null) {
             challenge.setCreatedAt(new Date());
         }
         if (challenge.getImageUrl() == null || challenge.getImageUrl().trim().isEmpty()) {
             challenge.setImageUrl("https://images.unsplash.com/photo-1517838277536-f5f99be501cd?auto=format&fit=crop&w=800&q=80");
         }
-        challenges.add(challenge);
-        return challenge;
+        return challengeRepository.save(challenge);
     }
+
+    public void deleteChallengeById(Long id) {
+        if (id != null) {
+            challengeRepository.deleteById(id);
+        }
+    }
+
+    // =========================================================================
+    // Paginated & Custom Query Methods (Derived Queries & @Query JPQL)
+    // =========================================================================
+
+    public Page<Challenge> getChallenges(Pageable pageable) {
+        return challengeRepository.findAll(pageable);
+    }
+
+    public List<Challenge> getChallengesByCategory(String category) {
+        return challengeRepository.findByCategory(category);
+    }
+
+    public List<Challenge> getActiveChallengesByRewardDesc() {
+        return challengeRepository.findByActiveTrueOrderByRewardPointsDesc();
+    }
+
+    public Page<Challenge> searchByTitleIgnoreCase(String title, Pageable pageable) {
+        return challengeRepository.findByTitleContainingIgnoreCase(title, pageable);
+    }
+
+    public Page<Challenge> searchByMinRewardPoints(int minRewardPoints, Pageable pageable) {
+        return challengeRepository.findByRewardPointsGreaterThanEqual(minRewardPoints, pageable);
+    }
+
+    public Page<Challenge> searchByDifficulty(String difficulty, Pageable pageable) {
+        return challengeRepository.findByDifficultyIgnoreCase(difficulty, pageable);
+    }
+
+    public Page<Challenge> searchTopRewardChallenges(Pageable pageable) {
+        return challengeRepository.findTopRewardChallenges(pageable);
+    }
+
+    public Page<Challenge> searchEliteChallengesByCategory(String category, int minReward, Pageable pageable) {
+        return challengeRepository.findEliteChallengesByCategory(category, minReward, pageable);
+    }
+
+    public List<Challenge> searchByKeyword(String keyword) {
+        return challengeRepository.searchByKeyword(keyword);
+    }
+
+    public List<Challenge> findByDurationRange(int minDays, int maxDays) {
+        return challengeRepository.findByDurationRange(minDays, maxDays);
+    }
+
+    public Integer getMaxRewardPoints() {
+        Integer max = challengeRepository.findMaxRewardPoints();
+        return max != null ? max : 0;
+    }
+
+    public int updateChallengeActiveStatus(Long id, boolean active) {
+        return challengeRepository.updateActiveStatus(id, active);
+    }
+
+    // =========================================================================
+    // Form Dropdown Helper Lists
+    // =========================================================================
 
     public List<String> getCategories() {
         return List.of(

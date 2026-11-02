@@ -31,11 +31,11 @@
                 <!-- Header Banner -->
                 <div class="text-center mb-4">
                     <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-secondary-subtle text-secondary small mb-2">
-                        <span class="badge bg-primary rounded-pill">In-Class Live Demo</span>
-                        <span>Spring MVC Form &bull; Bean Validation &bull; PRG Pattern</span>
+                        <span class="badge bg-primary rounded-pill">Spring Data JPA</span>
+                        <span>@Entity &bull; @ManyToOne Coach &bull; Bean Validation</span>
                     </div>
                     <h1 class="display-6 fw-bold text-white tracking-tight">Launch a New <span class="text-gradient">Challenge</span></h1>
-                    <p class="text-secondary small">Define quest parameters, discipline categories, XP reward bounties, and difficulty tiers.</p>
+                    <p class="text-secondary small">Define quest parameters, assign a lead Coach, and persist directly to H2 via JPA.</p>
                 </div>
 
                 <!-- Form Card -->
@@ -70,6 +70,23 @@
                             </div>
                         </div>
 
+                        <!-- Lead Coach Selection (@ManyToOne) -->
+                        <div class="mb-3">
+                            <label for="coachId" class="form-label text-white fw-semibold small">
+                                Lead Coach / Trainer <span class="text-muted fw-normal">(@ManyToOne Relationship)</span>
+                            </label>
+                            <select id="coachId"
+                                    class="form-select form-select-dark"
+                                    th:field="*{coach.id}">
+                                <option value="">-- Select a Certified Coach --</option>
+                                <option th:each="c : ${coaches}"
+                                        th:value="${c.id}"
+                                        th:text="${c.name} + ' — ' + ${c.specialty} + ' (' + ${c.certification} + ')'">
+                                    Marcus Vance
+                                </option>
+                            </select>
+                        </div>
+
                         <!-- Category & Difficulty Row -->
                         <div class="row g-3 mb-3">
                             <div class="col-md-6">
@@ -83,7 +100,7 @@
                                     <option value="">-- Choose Category --</option>
                                     <option th:each="cat : ${categories}"
                                             th:value="${cat}"
-                                            th:text="${cat}">Strength & Core</option>
+                                            th:text="${cat}">Strength &amp; Core</option>
                                 </select>
                                 <div class="invalid-feedback-custom" th:if="${#fields.hasErrors('category')}">
                                     <i class="bi bi-exclamation-circle-fill"></i>
@@ -223,10 +240,8 @@
         </div>
     </main>
 
-    <!-- Footer -->
-    <footer class="container text-center mt-5 pt-4 border-top border-secondary border-opacity-25 text-secondary small">
-        <p>&copy; 2026 <span class="text-light fw-semibold">FitSquad Hub</span> &bull; CPAN-228 Web Application Development</p>
-    </footer>
+    <!-- Reusable Footer Fragment -->
+    <div th:replace="~{fragments/footer :: footer}"></div>
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

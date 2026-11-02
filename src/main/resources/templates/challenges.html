@@ -32,14 +32,14 @@
             <div class="row align-items-center g-4">
                 <div class="col-lg-8">
                     <div class="d-inline-flex align-items-center gap-2 px-3 py-1 rounded-pill bg-dark border border-secondary-subtle text-secondary small mb-3">
-                        <span class="badge bg-primary rounded-pill">MVC Week 2</span>
-                        <span>Spring Boot &bull; Form Processing &bull; Bean Validation</span>
+                        <span class="badge bg-primary rounded-pill">Spring Data JPA</span>
+                        <span>Custom Queries &bull; Dynamic Sorting &bull; Pagination</span>
                     </div>
                     <h1 class="display-5 fw-extrabold text-white tracking-tight mb-3" th:text="${pageTitle}">
                         FitSquad Hub - Fitness Challenge Platform
                     </h1>
                     <p class="lead text-secondary col-lg-10 mb-4">
-                        Push your boundaries, log workout progress, and earn squad prestige. Explore our community-driven fitness challenges crafted for all disciplines.
+                        Push your boundaries, log workout progress, and earn squad prestige. Explore our community-driven fitness challenges crafted by certified coaches.
                     </p>
                     <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-md-start mb-3">
                         <a th:href="@{/create-challenge}" class="btn btn-join px-4 py-2 rounded-pill">
@@ -51,21 +51,25 @@
                         <a th:href="@{/workout-logs}" class="btn btn-outline-secondary px-3 py-2 rounded-pill">
                             <i class="bi bi-journal-check me-1"></i> Community Logs
                         </a>
+                        <a th:href="@{/coaches}" class="btn btn-outline-info px-3 py-2 rounded-pill">
+                            <i class="bi bi-person-badge me-1"></i> Coaches
+                        </a>
                     </div>
                 </div>
 
-                <!-- Stats Summary Panel demonstrating #lists.size() -->
+                <!-- Stats Summary Panel -->
                 <div class="col-lg-4">
                     <div class="row g-3">
                         <div class="col-6">
                             <div class="stats-badge-card text-center">
                                 <div class="text-secondary small mb-1">
-                                    <i class="bi bi-collection-play text-info me-1"></i>Total Quests
+                                    <i class="bi bi-collection-play text-info me-1"></i>Matching Quests
                                 </div>
-                                <div class="display-6 fw-bold text-white" id="totalChallengesCount" th:text="${#lists.size(challenges)}">
+                                <div class="display-6 fw-bold text-white" id="totalChallengesCount"
+                                     th:text="${totalElements != null ? totalElements : #lists.size(challenges)}">
                                     0
                                 </div>
-                                <div class="text-muted" style="font-size: 0.72rem;">Available in Hub</div>
+                                <div class="text-muted" style="font-size: 0.72rem;">In Database</div>
                             </div>
                         </div>
 
@@ -75,7 +79,7 @@
                                     <i class="bi bi-fire text-danger me-1"></i>Max Reward
                                 </div>
                                 <div class="display-6 fw-bold text-warning">
-                                    750 <span class="fs-6 fw-normal text-muted">XP</span>
+                                    900 <span class="fs-6 fw-normal text-muted">XP</span>
                                 </div>
                                 <div class="text-muted" style="font-size: 0.72rem;">Top Tier Points</div>
                             </div>
@@ -85,11 +89,11 @@
                             <div class="stats-badge-card d-flex align-items-center justify-content-between">
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="rounded-circle p-2 bg-success bg-opacity-20 text-success">
-                                        <i class="bi bi-check2-circle fs-4"></i>
+                                        <i class="bi bi-database-check fs-4"></i>
                                     </div>
                                     <div>
-                                        <div class="fw-semibold text-white small">Enrollment Status</div>
-                                        <div class="text-muted" style="font-size: 0.75rem;">Live registration open for active challenges</div>
+                                        <div class="fw-semibold text-white small">H2 &amp; JPA Persistence</div>
+                                        <div class="text-muted" style="font-size: 0.75rem;">Backed by Spring Data JPA Repositories</div>
                                     </div>
                                 </div>
                                 <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-3 py-1">
@@ -102,32 +106,116 @@
             </div>
         </section>
 
-        <!-- Catalog Header Bar -->
-        <div id="challenge-catalog" class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 border-bottom border-secondary border-opacity-25 pb-3 mb-4 mt-2">
+        <!-- Search & Filter Form (Reference Example for Custom JPA Queries) -->
+        <div class="form-card mb-4 p-4">
+            <form method="get" th:action="@{/challenges}" class="row g-3 align-items-end">
+                <!-- Hidden inputs to preserve sorting and page size when filtering -->
+                <input type="hidden" name="sort" th:value="${sort}" />
+                <input type="hidden" name="direction" th:value="${direction}" />
+                <input type="hidden" name="size" th:value="${pageSize}" />
+
+                <div class="col-md-5">
+                    <label for="search" class="form-label text-white fw-semibold small">
+                        <i class="bi bi-search me-1 text-info"></i>Search Term / Threshold
+                    </label>
+                    <input type="text"
+                           id="search"
+                           name="search"
+                           th:value="${search}"
+                           class="form-control form-control-dark"
+                           placeholder="Enter title keyword, min XP (e.g. 500), difficulty, or category...">
+                </div>
+
+                <div class="col-md-4">
+                    <label for="filterType" class="form-label text-white fw-semibold small">
+                        <i class="bi bi-funnel-fill me-1 text-primary"></i>JPA Query Filter
+                    </label>
+                    <select id="filterType" name="filterType" class="form-select form-select-dark">
+                        <option value="all" th:selected="${filterType == 'all'}">All Challenges (findAll Pageable)</option>
+                        <option value="title" th:selected="${filterType == 'title'}">By Title (Derived: ContainingIgnoreCase)</option>
+                        <option value="reward" th:selected="${filterType == 'reward'}">By Min XP Reward (Derived: GreaterThanEqual)</option>
+                        <option value="difficulty" th:selected="${filterType == 'difficulty'}">By Difficulty Tier (Derived: IgnoreCase)</option>
+                        <option value="top" th:selected="${filterType == 'top'}">Top XP Challenges (@Query JPQL Sort)</option>
+                        <option value="elite" th:selected="${filterType == 'elite'}">Elite Category Quests &ge; 500 XP (@Query JPQL)</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3 d-flex gap-2">
+                    <button type="submit" class="btn btn-join fw-semibold flex-grow-1 rounded-pill">
+                        <i class="bi bi-search me-1"></i>Search
+                    </button>
+                    <a th:href="@{/challenges}" class="btn btn-outline-secondary fw-semibold flex-grow-1 rounded-pill">
+                        Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <!-- Catalog Header & Interactive Column Sort Bar -->
+        <div id="challenge-catalog" class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3 border-bottom border-secondary border-opacity-25 pb-3 mb-4">
             <div>
                 <h2 class="h4 fw-bold text-white mb-0">Featured Challenges</h2>
                 <span class="text-secondary small">
-                    Showing <span class="fw-semibold text-light" th:text="${#lists.size(challenges)}">6</span> handpicked challenges for Week 1
+                    Showing <span class="fw-semibold text-light" th:text="${#lists.size(challenges)}">6</span>
+                    of <span class="fw-semibold text-info" th:text="${totalElements != null ? totalElements : #lists.size(challenges)}">12</span> total challenges
                 </span>
             </div>
 
-            <!-- Quick Filter Badges for Aesthetics -->
-            <div class="d-flex gap-2 flex-wrap">
-                <button type="button" class="btn btn-sm btn-dark border-secondary active rounded-pill px-3">All</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Strength</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Cardio &amp; HIIT</button>
-                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill px-3">Recovery</button>
+            <!-- Interactive Sorting Controls (Toggles ASC / DESC while preserving filters) -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                <span class="text-secondary small me-1"><i class="bi bi-arrow-down-up me-1"></i>Sort by:</span>
+
+                <a class="btn btn-sm rounded-pill px-3"
+                   th:classappend="${sort == 'title'} ? 'btn-primary' : 'btn-outline-secondary text-light'"
+                   th:href="@{/challenges(page=${currentPage}, size=${pageSize}, sort='title', direction=${sort == 'title' && direction == 'ASC' ? 'DESC' : 'ASC'}, search=${search}, filterType=${filterType})}">
+                    Title
+                    <span th:if="${sort == 'title'}" th:text="${direction == 'ASC' ? '↑' : '↓'}"></span>
+                    <span th:unless="${sort == 'title'}" class="text-muted small">↕</span>
+                </a>
+
+                <a class="btn btn-sm rounded-pill px-3"
+                   th:classappend="${sort == 'category'} ? 'btn-primary' : 'btn-outline-secondary text-light'"
+                   th:href="@{/challenges(page=${currentPage}, size=${pageSize}, sort='category', direction=${sort == 'category' && direction == 'ASC' ? 'DESC' : 'ASC'}, search=${search}, filterType=${filterType})}">
+                    Category
+                    <span th:if="${sort == 'category'}" th:text="${direction == 'ASC' ? '↑' : '↓'}"></span>
+                    <span th:unless="${sort == 'category'}" class="text-muted small">↕</span>
+                </a>
+
+                <a class="btn btn-sm rounded-pill px-3"
+                   th:classappend="${sort == 'durationDays'} ? 'btn-primary' : 'btn-outline-secondary text-light'"
+                   th:href="@{/challenges(page=${currentPage}, size=${pageSize}, sort='durationDays', direction=${sort == 'durationDays' && direction == 'ASC' ? 'DESC' : 'ASC'}, search=${search}, filterType=${filterType})}">
+                    Duration
+                    <span th:if="${sort == 'durationDays'}" th:text="${direction == 'ASC' ? '↑' : '↓'}"></span>
+                    <span th:unless="${sort == 'durationDays'}" class="text-muted small">↕</span>
+                </a>
+
+                <a class="btn btn-sm rounded-pill px-3"
+                   th:classappend="${sort == 'rewardPoints'} ? 'btn-primary' : 'btn-outline-secondary text-light'"
+                   th:href="@{/challenges(page=${currentPage}, size=${pageSize}, sort='rewardPoints', direction=${sort == 'rewardPoints' && direction == 'ASC' ? 'DESC' : 'ASC'}, search=${search}, filterType=${filterType})}">
+                    Reward XP
+                    <span th:if="${sort == 'rewardPoints'}" th:text="${direction == 'ASC' ? '↑' : '↓'}"></span>
+                    <span th:unless="${sort == 'rewardPoints'}" class="text-muted small">↕</span>
+                </a>
+
+                <a class="btn btn-sm rounded-pill px-3"
+                   th:classappend="${sort == 'difficulty'} ? 'btn-primary' : 'btn-outline-secondary text-light'"
+                   th:href="@{/challenges(page=${currentPage}, size=${pageSize}, sort='difficulty', direction=${sort == 'difficulty' && direction == 'ASC' ? 'DESC' : 'ASC'}, search=${search}, filterType=${filterType})}">
+                    Difficulty
+                    <span th:if="${sort == 'difficulty'}" th:text="${direction == 'ASC' ? '↑' : '↓'}"></span>
+                    <span th:unless="${sort == 'difficulty'}" class="text-muted small">↕</span>
+                </a>
             </div>
         </div>
 
-        <!-- Empty State Handling (Demonstrating th:if for empty list) -->
+        <!-- Empty State Handling -->
         <div th:if="${#lists.isEmpty(challenges)}" class="alert alert-dark text-center py-5 rounded-4 border-secondary">
             <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
-            <h4 class="text-white">No Challenges Currently Scheduled</h4>
-            <p class="text-secondary">Please check back soon as our trainers are assembling new programs!</p>
+            <h4 class="text-white">No Challenges Found Matching Criteria</h4>
+            <p class="text-secondary">Try clearing your search filters or adjusting your minimum XP query.</p>
+            <a th:href="@{/challenges}" class="btn btn-outline-light rounded-pill px-4 mt-2">Reset Filters</a>
         </div>
 
-        <!-- Challenges Grid (Demonstrating th:unless and th:each) -->
+        <!-- Challenges Grid -->
         <div th:unless="${#lists.isEmpty(challenges)}" class="row g-4">
             <div class="col-12 col-md-6 col-lg-4" th:each="challenge : ${challenges}">
                 
@@ -137,7 +225,6 @@
                     
                     <!-- Card Media / Thumbnail -->
                     <div class="card-img-wrapper">
-                        <!-- Demonstrating th:src, th:alt, and image fallback -->
                         <img th:src="${challenge.imageUrl}"
                              th:alt="${challenge.title}"
                              class="challenge-img"
@@ -152,15 +239,13 @@
                             <span th:text="${challenge.category}">Fitness</span>
                         </div>
 
-                        <!-- Status Badge (Demonstrating th:if and th:unless) -->
+                        <!-- Status Badge -->
                         <div class="status-floating-badge">
-                            <!-- th:if: rendered when challenge is active -->
                             <span th:if="${challenge.active}" 
                                   class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill fw-medium">
                                 <i class="bi bi-circle-fill me-1 small animate-pulse"></i> Active
                             </span>
                             
-                            <!-- th:unless: rendered when challenge is NOT active -->
                             <span th:unless="${challenge.active}" 
                                   class="badge bg-secondary-subtle text-light-emphasis border border-secondary-subtle px-3 py-1 rounded-pill fw-medium">
                                 <i class="bi bi-clock-history me-1"></i> Upcoming
@@ -171,7 +256,7 @@
                     <!-- Card Content Body -->
                     <div class="card-body p-4 d-flex flex-column justify-content-between">
                         <div>
-                            <!-- Header Row: Title & Difficulty Badge (Demonstrating th:classappend) -->
+                            <!-- Header Row: Title & Difficulty Badge -->
                             <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
                                 <h3 class="h5 fw-bold text-white mb-0 text-truncate" th:text="${challenge.title}">
                                     Challenge Title
@@ -183,6 +268,13 @@
                                       th:text="${challenge.difficulty}">
                                     Difficulty
                                 </span>
+                            </div>
+
+                            <!-- Coach Relationship Badge (@ManyToOne) -->
+                            <div class="mb-2 small text-info d-flex align-items-center gap-1" th:if="${challenge.coach != null}">
+                                <i class="bi bi-person-check-fill"></i>
+                                <span>Coach: <strong th:text="${challenge.coach.name}">Marcus Vance</strong></span>
+                                <span class="text-secondary" th:text="'(' + ${challenge.coach.certification} + ')'"></span>
                             </div>
 
                             <!-- Challenge Description -->
@@ -215,17 +307,15 @@
                                 </div>
                             </div>
 
-                            <!-- Action Buttons demonstrating th:if and th:unless -->
+                            <!-- Action Buttons -->
                             <div class="mt-auto">
-                                <!-- When Active: Join Button -->
-                                <button th:if="${challenge.active}" 
-                                        type="button" 
-                                        class="btn btn-join w-100 fw-semibold rounded-3 py-2 d-flex align-items-center justify-content-center gap-2">
+                                <a th:if="${challenge.active}"
+                                   th:href="@{/log-workout}"
+                                   class="btn btn-join w-100 fw-semibold rounded-3 py-2 d-flex align-items-center justify-content-center gap-2 text-decoration-none">
                                     <i class="bi bi-play-circle-fill"></i>
-                                    <span>Join Challenge</span>
-                                </button>
+                                    <span>Log Workout for Quest</span>
+                                </a>
 
-                                <!-- When Inactive: Enrollment Closed -->
                                 <button th:unless="${challenge.active}" 
                                         type="button" 
                                         class="btn btn-closed w-100 fw-semibold rounded-3 py-2 d-flex align-items-center justify-content-center gap-2" 
@@ -242,19 +332,62 @@
             </div>
         </div>
 
+        <!-- Pagination Controls -->
+        <div th:if="${totalPages != null && totalPages > 0}"
+             class="d-flex flex-column flex-sm-row justify-content-between align-items-center mt-5 mb-4 gap-3 pt-3 border-top border-secondary border-opacity-25">
+            <!-- Display Paging Info -->
+            <div class="text-secondary small">
+                Page <span class="fw-bold text-white" th:text="${currentPage + 1}">1</span> of
+                <span class="fw-bold text-white" th:text="${totalPages}">2</span>
+                (<span class="text-info fw-semibold" th:text="${totalElements}">12</span> total challenges)
+            </div>
+
+            <!-- Navigation Buttons -->
+            <nav aria-label="Challenge pagination">
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- First Page -->
+                    <li class="page-item" th:classappend="${currentPage == 0} ? 'disabled'">
+                        <a class="page-link bg-dark text-light border-secondary"
+                           th:href="@{/challenges(page=0, size=${pageSize}, sort=${sort}, direction=${direction}, search=${search}, filterType=${filterType})}">First</a>
+                    </li>
+
+                    <!-- Previous Page -->
+                    <li class="page-item" th:classappend="${!hasPrevious} ? 'disabled'">
+                        <a class="page-link bg-dark text-light border-secondary"
+                           th:href="@{/challenges(page=${currentPage - 1}, size=${pageSize}, sort=${sort}, direction=${direction}, search=${search}, filterType=${filterType})}">Previous</a>
+                    </li>
+
+                    <!-- Page Numbers -->
+                    <th:block th:if="${totalPages > 0}">
+                        <li class="page-item" th:each="p : ${#numbers.sequence(0, totalPages - 1)}"
+                            th:classappend="${p == currentPage} ? 'active'"
+                            th:if="${p >= currentPage - 2 && p <= currentPage + 2}">
+                            <a class="page-link border-secondary"
+                               th:classappend="${p == currentPage} ? 'bg-primary text-white' : 'bg-dark text-light'"
+                               th:href="@{/challenges(page=${p}, size=${pageSize}, sort=${sort}, direction=${direction}, search=${search}, filterType=${filterType})}"
+                               th:text="${p + 1}">1</a>
+                        </li>
+                    </th:block>
+
+                    <!-- Next Page -->
+                    <li class="page-item" th:classappend="${!hasNext} ? 'disabled'">
+                        <a class="page-link bg-dark text-light border-secondary"
+                           th:href="@{/challenges(page=${currentPage + 1}, size=${pageSize}, sort=${sort}, direction=${direction}, search=${search}, filterType=${filterType})}">Next</a>
+                    </li>
+
+                    <!-- Last Page -->
+                    <li class="page-item" th:classappend="${currentPage == totalPages - 1} ? 'disabled'">
+                        <a class="page-link bg-dark text-light border-secondary"
+                           th:href="@{/challenges(page=${totalPages - 1}, size=${pageSize}, sort=${sort}, direction=${direction}, search=${search}, filterType=${filterType})}">Last</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+
     </main>
 
-    <!-- Footer -->
-    <footer class="container text-center mt-5 pt-4 border-top border-secondary border-opacity-25 text-secondary small">
-        <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
-            <div>
-                &copy; 2026 <span class="text-light fw-semibold">FitSquad Hub</span> &bull; Empowering Fitness Communities.
-            </div>
-            <div class="text-muted">
-                Spring Boot MVC &bull; Week 1 &bull; Thymeleaf Engine
-            </div>
-        </div>
-    </footer>
+    <!-- Reusable Footer Fragment -->
+    <div th:replace="~{fragments/footer :: footer}"></div>
 
     <!-- Bootstrap 5.3 JS Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
